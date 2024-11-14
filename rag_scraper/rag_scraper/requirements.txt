@@ -1,0 +1,11 @@
+scrapy
+beautifulsoup4
+w3lib
+logging
+time
+langchain
+langchain_unstructured
+langchain_community
+urllib3
+nltk
+itemadapter
