@@ -166,5 +166,6 @@ rag_scraper/rag_scraper/config.py
 
 #ignore data folder
 rag_scraper/data/
+job_data/
 
 .DS_Store

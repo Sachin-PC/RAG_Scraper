@@ -7,7 +7,7 @@ class URLFrontierPriorityQueue:
             self.add_url(url,1,1)
 
     def add_url(self, url,  inlink, wavenumber):
-        priority = -(inlink*10 + wavenumber*0.1)
+        priority = -(inlink*10 - wavenumber)
         self.url_frontier.put((priority,url))
 
     def get_url(self):

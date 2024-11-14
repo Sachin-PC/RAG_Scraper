@@ -12,6 +12,7 @@ import scrapy
 import logging
 import time
 import rag_scraper.config as config
+from urllib.parse import urlparse
 # import nltk
 # nltk.download('punkt')
 
@@ -30,7 +31,7 @@ class RagScraperPipeline:
     def process_item(self, item, spider):
         url_hash = hash(item["url"])
         timestamp = int(time.time() * 1000)
-        file_name = f"response_{url_hash}_{timestamp}.txt"
+        file_name = f"response_{url_hash}_{timestamp}.html"
         file_path = os.path.join(self.data_file_directory,file_name)
         with open(file_path,"w") as file:    
             file.write(item['html_content'])
@@ -63,11 +64,13 @@ class UrlMetadataPipeline:
 
     def __init__(self):
         print("Initializing UrlMetadataPipeline")
-        self.allowed_domains_set = config.INITIAL_ALLOWED_DOMAINS
+        # self.allowed_domains_set = config.INITIAL_ALLOWED_DOMAINS
+        self.allowed_domains_set = set()
+        self.crawled_domains_count = 0
         self.visited_urls = []
         self.blacklisted_domains = set()
         self.max_urls_to_crawl = config.MAX_URLS_TO_CRAWL
-        self.urls_parsed_count = 0
+        self.urls_crawled_count = 0
         self.mod_val = config.CHECKPOINT_MOD_VAL
         self.visited_urls_written_to_file = 0
         self.visited_urls_file_path = os.path.join(config.URL_METADATA_DIRECTORY_PATH,config.VISITED_URLS_FILENAME)
@@ -97,19 +100,26 @@ class UrlMetadataPipeline:
 
     def process_item(self, item, spider):
         self.visited_urls.append(item['url'])
-        self.urls_parsed_count += 1
-        if (self.urls_parsed_count %  self.mod_val) == 0:
+        self.urls_crawled_count += 1
+        parsed_url = urlparse(item['url'])
+        if parsed_url.netloc not in self.allowed_domains_set:
+            self.allowed_domains_set.add(parsed_url.netloc)
+            self.crawled_domains_count += 1
+            with open("domains_test.txt","a") as file:  
+                file.write(f"{self.crawled_domains_count} : "+parsed_url.netloc+"\n")
+        
+        if (self.urls_crawled_count %  self.mod_val) == 0:
             self.update_metadata_file()    
         return
 
 
     def update_metadata_file(self):
         with open(self.visited_urls_file_path,"a") as file:  
-            for i in range(self.visited_urls_written_to_file, self.urls_parsed_count):
+            for i in range(self.visited_urls_written_to_file, self.urls_crawled_count):
                 file.write(str(i)+" : "+self.visited_urls[i]+"\n")
             
-        self.visited_urls_written_to_file = self.urls_parsed_count
+        self.visited_urls_written_to_file = self.urls_crawled_count
 
         with open(self.visited_urls_metadata_path,"w") as file:  
-            file.write("urls parsed : "+str(self.urls_parsed_count)+"\n")
-            file.write("Total Domains Accessed : "+str(len(self.allowed_domains_set))+"\n")
+            file.write("urls crawled : "+str(self.urls_crawled_count)+"\n")
+            file.write("Total Domains Accessed : "+str(self.crawled_domains_count)+"\n")
